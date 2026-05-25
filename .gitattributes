@@ -1,0 +1,9 @@
+# Always use LF in the repo; let editors handle local line endings
+* text=auto eol=lf
+
+# Binaries — no conversion
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+*.node binary
