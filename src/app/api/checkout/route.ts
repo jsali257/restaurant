@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { stripe, formatAmountForStripe } from "@/lib/stripe";
+import { getStripe, formatAmountForStripe } from "@/lib/stripe";
 import { CreateOrderPayload } from "@/types";
 
 const TAX_RATE = 0.0825;
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
 
     // Create Stripe checkout session
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
       customer_email: order.customer_email,

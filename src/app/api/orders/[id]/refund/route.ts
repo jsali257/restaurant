@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 
 export async function POST(
   _req: NextRequest,
@@ -28,7 +28,7 @@ export async function POST(
   }
 
   try {
-    await stripe.refunds.create({
+    await getStripe().refunds.create({
       payment_intent: order.stripe_charge_id,
       reason: "requested_by_customer",
     });
