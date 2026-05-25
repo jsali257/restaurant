@@ -51,7 +51,7 @@ const STATUS_CONFIG: Record<
 const NEXT_STATUS: Record<KitchenStatus, OrderStatus> = {
   confirmed: "preparing",
   preparing: "ready",
-  ready: "completed",
+  ready: "picked_up",
 };
 
 const NEXT_LABEL: Record<KitchenStatus, string> = {
@@ -263,11 +263,11 @@ export default function KitchenPage() {
     const update: Record<string, unknown> = { status };
     if (status === "preparing") update.preparing_at = new Date().toISOString();
     if (status === "ready") update.ready_at = new Date().toISOString();
-    if (status === "completed") update.completed_at = new Date().toISOString();
+    if (status === "picked_up") update.completed_at = new Date().toISOString();
 
     await supabase.from("orders").update(update).eq("id", orderId);
 
-    if (status === "completed") {
+    if (status === "picked_up") {
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
     } else {
       setOrders((prev) =>

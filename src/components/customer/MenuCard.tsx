@@ -49,7 +49,6 @@ export function MenuCard({ item, compact = false }: MenuCardProps) {
       quantity,
       special_instructions: instructions,
       selected_modifiers: selectedModifiers,
-      item_total: unitPrice * quantity,
     });
     toast.success(`${item.name} added to cart!`);
     setShowModal(false);
