@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Flame, Lock, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -9,7 +8,6 @@ import { Button } from "@/components/ui/Button";
 import toast from "react-hot-toast";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,14 +15,21 @@ export default function AdminLoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast.error(error.message);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+        return;
+      }
+      // Full-page navigation ensures the session cookie is committed before the
+      // middleware runs, preventing a redirect loop on the RSC prefetch.
+      window.location.href = "/admin";
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Login failed — check your connection");
       setLoading(false);
-      return;
     }
-    router.push("/admin");
   }
 
   return (

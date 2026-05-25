@@ -26,27 +26,34 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const isAdminRoute =
-    request.nextUrl.pathname.startsWith("/admin") &&
-    !request.nextUrl.pathname.startsWith("/admin/login");
+  const pathname = request.nextUrl.pathname;
+  const isAdminRoute = pathname.startsWith("/admin") && !pathname.startsWith("/admin/login");
+  const isLoginPage = pathname === "/admin/login";
 
-  if (isAdminRoute && !user) {
+  // Not logged in — protect admin routes
+  if (!user) {
+    if (isAdminRoute) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    return response;
+  }
+
+  // Logged in — check role once for both branches
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const isAdmin = !!profile && ["admin", "owner", "staff"].includes(profile.role);
+
+  // Has no admin role — block admin routes but leave them on login page (prevents redirect loop)
+  if (isAdminRoute && !isAdmin) {
     return NextResponse.redirect(new URL("/admin/login", request.url));
   }
 
-  if (isAdminRoute && user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || !["admin", "owner", "staff"].includes(profile.role)) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
-    }
-  }
-
-  if (request.nextUrl.pathname === "/admin/login" && user) {
+  // Has admin role — skip the login page
+  if (isLoginPage && isAdmin) {
     return NextResponse.redirect(new URL("/admin", request.url));
   }
 
