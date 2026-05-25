@@ -7,7 +7,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createAdminClient();
+  const supabase = createAdminClient();
 
   const { data: order, error } = await supabase
     .from("orders")

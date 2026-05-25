@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createAdminClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("orders")
     .select("*, order_items(*, order_item_modifiers(*))")
@@ -26,7 +26,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const body = await req.json();
-  const supabase = await createAdminClient();
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("orders")

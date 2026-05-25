@@ -15,19 +15,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid order data" }, { status: 400 });
     }
 
-    const supabase = await createAdminClient();
+    const supabase = createAdminClient();
 
     // Validate + price items from DB
     const itemIds = order.items.map((i) => i.menu_item_id);
-    console.log("[checkout] querying item IDs:", itemIds);
-
     const { data: menuItems, error: menuError } = await supabase
       .from("menu_items")
       .select("id, name, price, is_active")
       .in("id", itemIds)
       .eq("is_active", true);
-
-    console.log("[checkout] menuItems:", menuItems, "error:", menuError?.message);
 
     if (menuError || !menuItems?.length) {
       return NextResponse.json({ error: "Some items are unavailable" }, { status: 400 });
