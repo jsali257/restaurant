@@ -1,8 +1,39 @@
 -- ============================================================
 -- Ember & Oak Restaurant Platform - Supabase Schema
+-- Safe to re-run: teardown block drops everything first
 -- ============================================================
 
--- Enable necessary extensions
+-- ============================================================
+-- TEARDOWN (reverse dependency order)
+-- ============================================================
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS set_order_number ON orders;
+DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
+DROP TRIGGER IF EXISTS update_restaurants_updated_at ON restaurants;
+DROP TRIGGER IF EXISTS update_menu_items_updated_at ON menu_items;
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
+
+DROP TABLE IF EXISTS order_item_modifiers CASCADE;
+DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS loyalty_transactions CASCADE;
+DROP TABLE IF EXISTS reviews CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS coupons CASCADE;
+DROP TABLE IF EXISTS modifiers CASCADE;
+DROP TABLE IF EXISTS modifier_groups CASCADE;
+DROP TABLE IF EXISTS menu_items CASCADE;
+DROP TABLE IF EXISTS menu_categories CASCADE;
+DROP TABLE IF EXISTS business_hours CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+DROP TABLE IF EXISTS restaurants CASCADE;
+
+DROP FUNCTION IF EXISTS handle_new_user CASCADE;
+DROP FUNCTION IF EXISTS update_updated_at CASCADE;
+DROP FUNCTION IF EXISTS generate_order_number CASCADE;
+
+-- ============================================================
+-- EXTENSIONS
+-- ============================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -380,5 +411,12 @@ CREATE TRIGGER set_order_number
   FOR EACH ROW EXECUTE FUNCTION generate_order_number();
 
 -- Realtime publication
-ALTER PUBLICATION supabase_realtime ADD TABLE orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE order_items;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'orders') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'order_items') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE order_items;
+  END IF;
+END $$;

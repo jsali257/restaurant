@@ -1,4 +1,4 @@
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 export const metadata = {
   title: "Admin — Ember & Oak",
@@ -9,12 +9,5 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex min-h-screen bg-stone-950">
-      <AdminSidebar />
-      <main className="flex-1 overflow-auto bg-stone-50 dark:bg-stone-900">
-        {children}
-      </main>
-    </div>
-  );
+  return <AdminShell>{children}</AdminShell>;
 }
