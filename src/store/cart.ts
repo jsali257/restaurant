@@ -6,6 +6,7 @@ import { generateId } from "@/lib/utils";
 interface CartState {
   items: CartItem[];
   order_type: OrderType;
+  table_number: string | null;
   scheduled_for: string | null;
   coupon_code: string | null;
   coupon: Coupon | null;
@@ -18,6 +19,7 @@ interface CartState {
   updateQuantity: (id: string, quantity: number) => void;
   updateSpecialInstructions: (id: string, instructions: string) => void;
   setOrderType: (type: OrderType) => void;
+  setTableNumber: (table: string | null) => void;
   setScheduledFor: (time: string | null) => void;
   setCoupon: (code: string | null, coupon: Coupon | null) => void;
   setCartInstructions: (instructions: string) => void;
@@ -43,6 +45,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       order_type: "pickup",
+      table_number: null,
       scheduled_for: null,
       coupon_code: null,
       coupon: null,
@@ -121,6 +124,7 @@ export const useCartStore = create<CartState>()(
         })),
 
       setOrderType: (type) => set({ order_type: type }),
+      setTableNumber: (table) => set({ table_number: table, order_type: table ? "dine_in" : "pickup" }),
       setScheduledFor: (time) => set({ scheduled_for: time }),
       setCoupon: (code, coupon) => set({ coupon_code: code, coupon }),
       setCartInstructions: (instructions) =>
@@ -130,11 +134,13 @@ export const useCartStore = create<CartState>()(
       clearCart: () =>
         set({
           items: [],
+          table_number: null,
           coupon_code: null,
           coupon: null,
           scheduled_for: null,
           special_instructions: "",
           tip_percentage: 18,
+          order_type: "pickup",
         }),
 
       getSubtotal: () =>
@@ -152,6 +158,7 @@ export const useCartStore = create<CartState>()(
       partialize: (state) => ({
         items: state.items,
         order_type: state.order_type,
+        table_number: state.table_number,
         scheduled_for: state.scheduled_for,
         coupon_code: state.coupon_code,
         coupon: state.coupon,

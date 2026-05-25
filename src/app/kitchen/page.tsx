@@ -71,6 +71,7 @@ function KitchenOrderCard({ order, onStatusChange }: KitchenOrderCardProps) {
   const config = STATUS_CONFIG[status];
   const age = formatDistanceToNow(new Date(order.created_at), { addSuffix: true });
   const isOld = Date.now() - new Date(order.created_at).getTime() > 20 * 60 * 1000;
+  const isDineIn = order.order_type === "dine_in";
 
   async function advance() {
     if (!NEXT_STATUS[status]) return;
@@ -87,6 +88,21 @@ function KitchenOrderCard({ order, onStatusChange }: KitchenOrderCardProps) {
       exit={{ opacity: 0, scale: 0.95 }}
       className={`rounded-2xl border-2 ${config.border} ${config.bg} overflow-hidden shadow-md`}
     >
+      {/* Dine-in table banner */}
+      {isDineIn && (
+        <div className="bg-emerald-600 px-5 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🪑</span>
+            <span className="font-black text-white text-xl tracking-wide">
+              TABLE {order.table_number ?? "?"}
+            </span>
+          </div>
+          <span className="text-emerald-200 text-xs font-semibold uppercase tracking-widest">
+            Dine In
+          </span>
+        </div>
+      )}
+
       {/* Card header */}
       <div className="px-5 py-4 border-b border-current/10">
         <div className="flex items-start justify-between gap-3">
@@ -109,22 +125,24 @@ function KitchenOrderCard({ order, onStatusChange }: KitchenOrderCardProps) {
             </h3>
           </div>
           <div className="text-right">
-            <span
-              className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                order.order_type === "delivery"
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-purple-100 text-purple-700"
-              }`}
-            >
-              {order.order_type === "delivery" ? "🛵 Delivery" : "🏃 Pickup"}
-            </span>
+            {!isDineIn && (
+              <span
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                  order.order_type === "delivery"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-purple-100 text-purple-700"
+                }`}
+              >
+                {order.order_type === "delivery" ? "🛵 Delivery" : "🏃 Pickup"}
+              </span>
+            )}
             <p className="text-xs text-stone-400 mt-1.5 flex items-center gap-1 justify-end">
               <Clock className="w-3 h-3" /> {age}
             </p>
           </div>
         </div>
 
-        {order.customer_name && (
+        {order.customer_name && !isDineIn && (
           <p className="text-sm font-medium text-stone-600 mt-2">
             👤 {order.customer_name}
           </p>

@@ -282,6 +282,7 @@ export interface CreateOrderPayload {
   customer_name: string;
   customer_email: string;
   customer_phone?: string;
+  table_number?: string;
   delivery_address?: string;
   delivery_city?: string;
   delivery_state?: string;

@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
         total,
         coupon_id: couponId ?? null,
         coupon_code: order.coupon_code ?? null,
+        table_number: order.table_number ?? null,
         special_instructions: order.special_instructions ?? null,
         payment_status: "pending",
         status: "pending",

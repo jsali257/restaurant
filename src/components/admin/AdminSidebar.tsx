@@ -13,6 +13,7 @@ import {
   LogOut,
   ChefHat,
   ExternalLink,
+  QrCode,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/orders", icon: ShoppingBag, label: "Orders" },
   { href: "/admin/menu", icon: UtensilsCrossed, label: "Menu" },
+  { href: "/admin/tables", icon: QrCode, label: "Tables & QR" },
   { href: "/admin/coupons", icon: Tag, label: "Coupons" },
   { href: "/admin/analytics", icon: BarChart3, label: "Analytics" },
   { href: "/admin/settings", icon: Settings, label: "Settings" },
@@ -84,6 +86,15 @@ export function AdminSidebar() {
         >
           <ChefHat className="w-4 h-4" />
           Kitchen Display
+          <ExternalLink className="w-3 h-3 ml-auto" />
+        </Link>
+        <Link
+          href="/staff"
+          target="_blank"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-stone-400 hover:text-white hover:bg-stone-800 transition-colors"
+        >
+          <UtensilsCrossed className="w-4 h-4" />
+          Staff Order Entry
           <ExternalLink className="w-3 h-3 ml-auto" />
         </Link>
         <Link

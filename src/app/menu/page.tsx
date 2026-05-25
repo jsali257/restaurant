@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, SlidersHorizontal, Leaf, Flame, Star } from "lucide-react";
+import { Search, X, Leaf, Flame, Star, UtensilsCrossed } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/customer/Navbar";
 import { CartDrawer } from "@/components/customer/CartDrawer";
 import { MenuCard } from "@/components/customer/MenuCard";
@@ -11,6 +12,17 @@ import { MenuCardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { MenuItem, MenuCategory } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import { RESTAURANT_ID } from "@/lib/utils";
+import { useCartStore } from "@/store/cart";
+
+function TableDetector() {
+  const searchParams = useSearchParams();
+  const setTableNumber = useCartStore((s) => s.setTableNumber);
+  useEffect(() => {
+    const table = searchParams.get("table");
+    if (table) setTableNumber(table);
+  }, [searchParams, setTableNumber]);
+  return null;
+}
 
 type Filter = "all" | "vegetarian" | "popular" | "featured" | "spicy";
 
@@ -23,6 +35,8 @@ export default function MenuPage() {
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
   const [sticky, setSticky] = useState(false);
+  const table_number = useCartStore((s) => s.table_number);
+  const setTableNumber = useCartStore((s) => s.setTableNumber);
 
   useEffect(() => {
     async function loadMenu() {
@@ -82,6 +96,9 @@ export default function MenuPage() {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <TableDetector />
+      </Suspense>
       <Navbar onCartOpen={() => setCartOpen(true)} />
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
 
@@ -101,6 +118,19 @@ export default function MenuPage() {
             <p className="text-stone-400 text-lg">
               Everything made fresh, wood-fired with passion
             </p>
+            {table_number && (
+              <div className="mt-5 inline-flex items-center gap-2.5 bg-orange-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg">
+                <UtensilsCrossed className="w-4 h-4" />
+                Ordering for Table {table_number} — Dine In
+                <button
+                  onClick={() => setTableNumber(null)}
+                  className="ml-1 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-xs leading-none transition-colors"
+                  title="Clear table"
+                >
+                  ×
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

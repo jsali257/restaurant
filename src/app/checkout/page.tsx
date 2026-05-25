@@ -13,6 +13,8 @@ import {
   CreditCard,
   Lock,
   CheckCircle2,
+  UtensilsCrossed,
+  ChefHat,
 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { formatCurrency, calculateCartTotal, RESTAURANT_ID } from "@/lib/utils";
@@ -38,8 +40,9 @@ interface CustomerInfo {
 export default function CheckoutPage() {
   const router = useRouter();
   const [cartOpen, setCartOpen] = useState(false);
-  const { items, order_type, setOrderType, coupon, tip_percentage, getSubtotal, clearCart } =
+  const { items, order_type, setOrderType, table_number, coupon, tip_percentage, getSubtotal, clearCart } =
     useCartStore();
+  const isDineIn = order_type === "dine_in" && !!table_number;
   const [step, setStep] = useState<"info" | "payment">("info");
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState<CustomerInfo>({
@@ -88,6 +91,7 @@ export default function CheckoutPage() {
         customer_name: info.name,
         customer_email: info.email,
         customer_phone: info.phone || undefined,
+        table_number: table_number ?? undefined,
         delivery_address: order_type === "delivery" ? info.address : undefined,
         delivery_city: order_type === "delivery" ? info.city : undefined,
         delivery_state: order_type === "delivery" ? info.state : undefined,
@@ -124,6 +128,51 @@ export default function CheckoutPage() {
         clearCart();
         router.push(`/order/${data.order_id}`);
       }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to place order");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDineInOrder() {
+    if (!info.name) {
+      toast.error("Please enter your name");
+      return;
+    }
+    setLoading(true);
+    try {
+      const payload = {
+        restaurant_id: RESTAURANT_ID,
+        table_number,
+        customer_name: info.name || `Table ${table_number}`,
+        customer_email: info.email || undefined,
+        customer_phone: info.phone || undefined,
+        items: items.map((i) => ({
+          menu_item_id: i.menu_item_id,
+          quantity: i.quantity,
+          special_instructions: i.special_instructions || undefined,
+          modifiers: i.selected_modifiers.map((m) => ({
+            modifier_id: m.modifier_id,
+            name: m.name,
+            price_delta: m.price_delta,
+          })),
+        })),
+        tip_amount: tipAmount,
+        special_instructions: info.instructions || undefined,
+      };
+
+      const res = await fetch("/api/orders/dine-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to place order");
+
+      clearCart();
+      router.push(`/order/success?order_id=${data.order_id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to place order");
     } finally {
@@ -181,35 +230,51 @@ export default function CheckoutPage() {
               </div>
 
               {/* Order type */}
-              <div className="bg-white dark:bg-stone-900 rounded-2xl p-6 border border-stone-100 dark:border-stone-800">
-                <h2 className="font-semibold text-stone-900 dark:text-white mb-4">
-                  Order Type
-                </h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { value: "pickup", label: "Pickup", icon: ShoppingBag, desc: "Ready in ~20 min" },
-                    { value: "delivery", label: "Delivery", icon: Truck, desc: "Est. 35–50 min" },
-                  ].map(({ value, label, icon: Icon, desc }) => (
-                    <button
-                      key={value}
-                      onClick={() => setOrderType(value as "pickup" | "delivery")}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                        order_type === value
-                          ? "border-orange-500 bg-orange-50 dark:bg-orange-950/30"
-                          : "border-stone-200 dark:border-stone-700 hover:border-orange-300"
-                      }`}
-                    >
-                      <Icon
-                        className={`w-6 h-6 ${order_type === value ? "text-orange-500" : "text-stone-400"}`}
-                      />
-                      <span className={`font-semibold text-sm ${order_type === value ? "text-orange-600 dark:text-orange-400" : "text-stone-700 dark:text-stone-300"}`}>
-                        {label}
-                      </span>
-                      <span className="text-xs text-stone-400">{desc}</span>
-                    </button>
-                  ))}
+              {isDineIn ? (
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl p-5 border-2 border-emerald-400 flex items-center gap-4">
+                  <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <UtensilsCrossed className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-emerald-800 dark:text-emerald-300 text-lg">
+                      Dine In — Table {table_number}
+                    </p>
+                    <p className="text-emerald-600 dark:text-emerald-400 text-sm">
+                      Your order goes straight to the kitchen
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-white dark:bg-stone-900 rounded-2xl p-6 border border-stone-100 dark:border-stone-800">
+                  <h2 className="font-semibold text-stone-900 dark:text-white mb-4">
+                    Order Type
+                  </h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { value: "pickup", label: "Pickup", icon: ShoppingBag, desc: "Ready in ~20 min" },
+                      { value: "delivery", label: "Delivery", icon: Truck, desc: "Est. 35–50 min" },
+                    ].map(({ value, label, icon: Icon, desc }) => (
+                      <button
+                        key={value}
+                        onClick={() => setOrderType(value as "pickup" | "delivery")}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                          order_type === value
+                            ? "border-orange-500 bg-orange-50 dark:bg-orange-950/30"
+                            : "border-stone-200 dark:border-stone-700 hover:border-orange-300"
+                        }`}
+                      >
+                        <Icon
+                          className={`w-6 h-6 ${order_type === value ? "text-orange-500" : "text-stone-400"}`}
+                        />
+                        <span className={`font-semibold text-sm ${order_type === value ? "text-orange-600 dark:text-orange-400" : "text-stone-700 dark:text-stone-300"}`}>
+                          {label}
+                        </span>
+                        <span className="text-xs text-stone-400">{desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Customer info */}
               <div className="bg-white dark:bg-stone-900 rounded-2xl p-6 border border-stone-100 dark:border-stone-800 space-y-4">
@@ -326,7 +391,17 @@ export default function CheckoutPage() {
               )}
 
               {/* CTA */}
-              {step === "info" ? (
+              {isDineIn ? (
+                <Button
+                  size="lg"
+                  onClick={handleDineInOrder}
+                  loading={loading}
+                  className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <ChefHat className="w-5 h-5" />
+                  Send Order to Kitchen
+                </Button>
+              ) : step === "info" ? (
                 <Button
                   size="lg"
                   onClick={handleProceedToPayment}

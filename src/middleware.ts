@@ -29,10 +29,11 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAdminRoute = pathname.startsWith("/admin") && !pathname.startsWith("/admin/login");
   const isLoginPage = pathname === "/admin/login";
+  const isStaffRoute = pathname.startsWith("/staff");
 
-  // Not logged in — protect admin routes
+  // Not logged in — protect admin and staff routes
   if (!user) {
-    if (isAdminRoute) {
+    if (isAdminRoute || isStaffRoute) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
     return response;
@@ -47,8 +48,8 @@ export async function middleware(request: NextRequest) {
 
   const isAdmin = !!profile && ["admin", "owner", "staff"].includes(profile.role);
 
-  // Has no admin role — block admin routes but leave them on login page (prevents redirect loop)
-  if (isAdminRoute && !isAdmin) {
+  // Has no admin role — block admin and staff routes
+  if ((isAdminRoute || isStaffRoute) && !isAdmin) {
     return NextResponse.redirect(new URL("/admin/login", request.url));
   }
 
@@ -61,5 +62,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/staff", "/staff/:path*"],
 };
