@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
@@ -211,6 +212,16 @@ function ModifierModal({ item, onConfirm, onClose }: ModifierModalProps) {
   );
 }
 
+function TableParamReader({ onTable }: { onTable: (t: string) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const t = searchParams.get("table");
+    if (t) onTable(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 export default function StaffPage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -357,6 +368,14 @@ export default function StaffPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 flex flex-col">
+      <Suspense fallback={null}>
+        <TableParamReader
+          onTable={(t) => {
+            setTableNumber(t);
+            setCustomTable("");
+          }}
+        />
+      </Suspense>
       {/* Header */}
       <div className="bg-stone-900 border-b border-stone-800 px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
