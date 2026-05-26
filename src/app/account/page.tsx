@@ -58,6 +58,7 @@ function OrderCard({ order }: { order: PastOrder }) {
         quantity: item.quantity,
         special_instructions: item.special_instructions || "",
         selected_modifiers: [],
+        image_url: null,
       });
     });
     toast.success("Items added to cart!");
