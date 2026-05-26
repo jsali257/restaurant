@@ -27,6 +27,9 @@ interface Stats {
   weekOrders: number;
   avgOrderValue: number;
   pendingOrders: number;
+  todayTrend?: number;
+  weekTrend?: number;
+  avgTrend?: number;
 }
 
 const StatCard = ({
@@ -82,10 +85,14 @@ export default function AdminDashboard() {
       const supabase = createClient();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
       const weekAgo = new Date(today);
       weekAgo.setDate(weekAgo.getDate() - 7);
+      const twoWeeksAgo = new Date(today);
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
-      const [todayRes, weekRes, recentRes, pendingRes] = await Promise.all([
+      const [todayRes, weekRes, yesterdayRes, prevWeekRes, recentRes, pendingRes] = await Promise.all([
         supabase
           .from("orders")
           .select("total, status")
@@ -100,6 +107,20 @@ export default function AdminDashboard() {
           .gte("created_at", weekAgo.toISOString()),
         supabase
           .from("orders")
+          .select("total")
+          .eq("restaurant_id", RESTAURANT_ID)
+          .eq("payment_status", "paid")
+          .gte("created_at", yesterday.toISOString())
+          .lt("created_at", today.toISOString()),
+        supabase
+          .from("orders")
+          .select("total")
+          .eq("restaurant_id", RESTAURANT_ID)
+          .eq("payment_status", "paid")
+          .gte("created_at", twoWeeksAgo.toISOString())
+          .lt("created_at", weekAgo.toISOString()),
+        supabase
+          .from("orders")
           .select("*, order_items(name, quantity, subtotal)")
           .eq("restaurant_id", RESTAURANT_ID)
           .order("created_at", { ascending: false })
@@ -111,18 +132,33 @@ export default function AdminDashboard() {
           .in("status", ["pending", "confirmed"]),
       ]);
 
+      function pctChange(cur: number, prev: number) {
+        if (!prev) return undefined;
+        return Math.round(((cur - prev) / prev) * 100);
+      }
+
       const todayOrders = todayRes.data ?? [];
       const weekOrders = weekRes.data ?? [];
+      const yesterdayOrders = yesterdayRes.data ?? [];
+      const prevWeekOrders = prevWeekRes.data ?? [];
+
       const todayRevenue = todayOrders.reduce((s, o) => s + o.total, 0);
       const weekRevenue = weekOrders.reduce((s, o) => s + o.total, 0);
+      const yesterdayRevenue = yesterdayOrders.reduce((s, o) => s + o.total, 0);
+      const prevWeekRevenue = prevWeekOrders.reduce((s, o) => s + o.total, 0);
+      const avgOrderValue = weekOrders.length ? weekRevenue / weekOrders.length : 0;
+      const prevAvgOrderValue = prevWeekOrders.length ? prevWeekRevenue / prevWeekOrders.length : 0;
 
       setStats({
         todayRevenue,
         todayOrders: todayOrders.length,
         weekRevenue,
         weekOrders: weekOrders.length,
-        avgOrderValue: weekOrders.length ? weekRevenue / weekOrders.length : 0,
+        avgOrderValue,
         pendingOrders: pendingRes.data?.length ?? 0,
+        todayTrend: pctChange(todayRevenue, yesterdayRevenue),
+        weekTrend: pctChange(weekRevenue, prevWeekRevenue),
+        avgTrend: pctChange(avgOrderValue, prevAvgOrderValue),
       });
       setRecentOrders((recentRes.data as Order[]) ?? []);
       setLoading(false);
@@ -157,7 +193,7 @@ export default function AdminDashboard() {
           label="Today's Revenue"
           value={formatCurrency(stats?.todayRevenue ?? 0)}
           subLabel={`${stats?.todayOrders ?? 0} orders today`}
-          trend={12}
+          trend={stats?.todayTrend}
           icon={DollarSign}
           color="bg-gradient-to-br from-green-400 to-emerald-600"
         />
@@ -165,15 +201,15 @@ export default function AdminDashboard() {
           label="Weekly Revenue"
           value={formatCurrency(stats?.weekRevenue ?? 0)}
           subLabel={`${stats?.weekOrders ?? 0} orders this week`}
-          trend={8}
+          trend={stats?.weekTrend}
           icon={TrendingUp}
           color="bg-gradient-to-br from-orange-400 to-red-500"
         />
         <StatCard
           label="Avg Order Value"
           value={formatCurrency(stats?.avgOrderValue ?? 0)}
-          subLabel="Last 7 days"
-          trend={-3}
+          subLabel="Last 7 days vs prior week"
+          trend={stats?.avgTrend}
           icon={ShoppingBag}
           color="bg-gradient-to-br from-blue-400 to-indigo-600"
         />

@@ -7,6 +7,7 @@ import {
   UtensilsCrossed,
   Clock,
   Plus,
+  Minus,
   RefreshCw,
   Receipt,
   CheckCircle2,
@@ -15,6 +16,9 @@ import {
   ChefHat,
   Layers,
   ArrowLeft,
+  Users,
+  UserCheck,
+  SplitSquareHorizontal,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { RESTAURANT_ID, formatCurrency } from "@/lib/utils";
@@ -38,6 +42,60 @@ interface TableSession {
   has_pending_kitchen: boolean; // any order still confirmed/preparing
 }
 
+// ── Split-bill helpers ────────────────────────────────────────────────────────
+
+const PAYER_COLORS = [
+  { dot: "bg-blue-400",   badge: "bg-blue-500/20 text-blue-300 border border-blue-500/40",   header: "bg-blue-600"   },
+  { dot: "bg-violet-400", badge: "bg-violet-500/20 text-violet-300 border border-violet-500/40", header: "bg-violet-600" },
+  { dot: "bg-pink-400",   badge: "bg-pink-500/20 text-pink-300 border border-pink-500/40",   header: "bg-pink-600"   },
+  { dot: "bg-amber-400",  badge: "bg-amber-500/20 text-amber-300 border border-amber-500/40",  header: "bg-amber-600"  },
+  { dot: "bg-teal-400",   badge: "bg-teal-500/20 text-teal-300 border border-teal-500/40",   header: "bg-teal-600"   },
+  { dot: "bg-red-400",    badge: "bg-red-500/20 text-red-300 border border-red-500/40",    header: "bg-red-600"    },
+];
+
+interface Payer { id: number; name: string }
+interface BillUnit {
+  id: string;
+  name: string;
+  mods: string;
+  unitPrice: number; // pre-tax price for this one unit
+  payerId: number | null;
+}
+
+function buildUnits(session: TableSession): BillUnit[] {
+  return session.orders.flatMap((order) =>
+    (order.order_items ?? []).flatMap((item) => {
+      const unitPrice = parseFloat((item.subtotal / item.quantity).toFixed(2));
+      return Array.from({ length: item.quantity }, (_, i) => ({
+        id: `${item.id}-${i}`,
+        name: item.name,
+        mods: (item.order_item_modifiers ?? []).map((m) => m.name).join(", "),
+        unitPrice,
+        payerId: null as number | null,
+      }));
+    })
+  );
+}
+
+function payerTotals(
+  payers: Payer[],
+  units: BillUnit[],
+  totalSubtotal: number,
+  totalTax: number
+) {
+  return payers.map((p) => {
+    const sub = parseFloat(
+      units.filter((u) => u.payerId === p.id).reduce((s, u) => s + u.unitPrice, 0).toFixed(2)
+    );
+    const tax = totalSubtotal > 0
+      ? parseFloat(((sub / totalSubtotal) * totalTax).toFixed(2))
+      : 0;
+    return { ...p, subtotal: sub, tax, total: parseFloat((sub + tax).toFixed(2)) };
+  });
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+
 interface CloseBillModalProps {
   session: TableSession;
   onClose: () => void;
@@ -45,7 +103,55 @@ interface CloseBillModalProps {
 }
 
 function CloseBillModal({ session, onClose, onConfirm }: CloseBillModalProps) {
+  const [mode, setMode] = useState<"together" | "split">("together");
   const [loading, setLoading] = useState(false);
+  const [payers, setPayers] = useState<Payer[]>([
+    { id: 0, name: "Person 1" },
+    { id: 1, name: "Person 2" },
+  ]);
+  const [units, setUnits] = useState<BillUnit[]>(() => buildUnits(session));
+  const [editingPayer, setEditingPayer] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+
+  const nextPayerId = Math.max(...payers.map((p) => p.id)) + 1;
+  const unassigned = units.filter((u) => u.payerId === null).length;
+  const totals = payerTotals(payers, units, session.subtotal, session.tax_total);
+
+  function cycleUnit(unitId: string) {
+    setUnits((prev) =>
+      prev.map((u) => {
+        if (u.id !== unitId) return u;
+        const idx = payers.findIndex((p) => p.id === u.payerId);
+        const nextIdx = idx + 1 >= payers.length ? -1 : idx + 1; // -1 = unassigned
+        return { ...u, payerId: nextIdx === -1 ? null : payers[nextIdx].id };
+      })
+    );
+  }
+
+  function addPayer() {
+    if (payers.length >= 6) return;
+    const n = payers.length + 1;
+    setPayers((prev) => [...prev, { id: nextPayerId, name: `Person ${n}` }]);
+  }
+
+  function removePayer(id: number) {
+    setUnits((prev) => prev.map((u) => (u.payerId === id ? { ...u, payerId: null } : u)));
+    setPayers((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  function startEdit(p: Payer) {
+    setEditingPayer(p.id);
+    setEditName(p.name);
+  }
+
+  function saveEdit() {
+    if (editName.trim()) {
+      setPayers((prev) =>
+        prev.map((p) => (p.id === editingPayer ? { ...p, name: editName.trim() } : p))
+      );
+    }
+    setEditingPayer(null);
+  }
 
   async function handleConfirm() {
     setLoading(true);
@@ -53,24 +159,20 @@ function CloseBillModal({ session, onClose, onConfirm }: CloseBillModalProps) {
     setLoading(false);
   }
 
-  // Aggregate all items across all orders
-  const allItems = session.orders.flatMap((o) =>
-    (o.order_items ?? []).map((item) => ({
-      ...item,
-      round: session.orders.indexOf(o) + 1,
-    }))
+  const allItems = session.orders.flatMap((o, ri) =>
+    (o.order_items ?? []).map((item) => ({ ...item, round: ri + 1 }))
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-stone-900 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden border border-stone-700"
+        className="bg-stone-900 rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden border border-stone-700"
       >
         {/* Header */}
-        <div className="p-5 border-b border-stone-800 flex items-center justify-between flex-shrink-0">
+        <div className="p-4 border-b border-stone-800 flex items-center justify-between flex-shrink-0">
           <div>
             <h2 className="font-black text-white text-xl">Close Bill</h2>
             <p className="text-emerald-400 font-semibold text-sm">Table {session.table_number}</p>
@@ -83,82 +185,215 @@ function CloseBillModal({ session, onClose, onConfirm }: CloseBillModalProps) {
           </button>
         </div>
 
-        {/* Items */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-2">
-          <p className="text-stone-400 text-xs font-semibold uppercase tracking-wider mb-3">
-            Items Ordered
-          </p>
-          {allItems.map((item, idx) => (
-            <div key={idx} className="flex items-start justify-between gap-3 py-2 border-b border-stone-800/50">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 bg-stone-700 rounded text-xs font-bold text-stone-300 flex items-center justify-center flex-shrink-0">
-                    {item.quantity}
-                  </span>
-                  <p className="text-white text-sm font-medium">{item.name}</p>
-                </div>
-                {item.order_item_modifiers?.length > 0 && (
-                  <p className="text-stone-500 text-xs mt-0.5 ml-8">
-                    {item.order_item_modifiers.map((m) => m.name).join(", ")}
+        {/* Mode toggle */}
+        <div className="px-4 pt-4 flex gap-2 flex-shrink-0">
+          <button
+            onClick={() => setMode("together")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              mode === "together"
+                ? "bg-emerald-600 text-white"
+                : "bg-stone-800 text-stone-400 hover:text-white"
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            Pay Together
+          </button>
+          <button
+            onClick={() => setMode("split")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              mode === "split"
+                ? "bg-violet-600 text-white"
+                : "bg-stone-800 text-stone-400 hover:text-white"
+            }`}
+          >
+            <SplitSquareHorizontal className="w-4 h-4" />
+            Split Bill
+          </button>
+        </div>
+
+        {/* ── PAY TOGETHER ── */}
+        {mode === "together" && (
+          <>
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1.5">
+              {allItems.map((item, idx) => (
+                <div key={idx} className="flex items-start justify-between gap-3 py-2 border-b border-stone-800/50">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 bg-stone-700 rounded text-xs font-bold text-stone-300 flex items-center justify-center flex-shrink-0">
+                        {item.quantity}
+                      </span>
+                      <p className="text-white text-sm font-medium">{item.name}</p>
+                    </div>
+                    {item.order_item_modifiers?.length > 0 && (
+                      <p className="text-stone-500 text-xs mt-0.5 ml-7">
+                        {item.order_item_modifiers.map((m) => m.name).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-stone-300 text-sm font-semibold flex-shrink-0">
+                    {formatCurrency(item.subtotal)}
                   </p>
-                )}
-                {session.orders.length > 1 && (
-                  <p className="text-stone-600 text-xs ml-8">Round {item.round}</p>
+                </div>
+              ))}
+            </div>
+            <div className="p-4 border-t border-stone-800 space-y-2 flex-shrink-0">
+              <div className="flex justify-between text-stone-400 text-sm">
+                <span>Subtotal</span><span>{formatCurrency(session.subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-stone-400 text-sm">
+                <span>Tax (8.25%)</span><span>{formatCurrency(session.tax_total)}</span>
+              </div>
+              <div className="flex justify-between text-white font-black text-xl pt-2 border-t border-stone-700">
+                <span>Total Due</span>
+                <span className="text-emerald-400">{formatCurrency(session.grand_total)}</span>
+              </div>
+              <button
+                onClick={handleConfirm}
+                disabled={loading}
+                className="w-full mt-1 py-3.5 rounded-xl font-black text-base bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white transition-colors flex items-center justify-center gap-2"
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                {loading ? "Processing…" : "Mark as Paid & Close Table"}
+              </button>
+              <button onClick={onClose} className="w-full text-stone-500 hover:text-stone-300 text-sm transition-colors py-1">
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── SPLIT BILL ── */}
+        {mode === "split" && (
+          <>
+            {/* Payer chips */}
+            <div className="px-4 pt-3 pb-2 flex-shrink-0 border-b border-stone-800">
+              <p className="text-stone-500 text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Users className="w-3 h-3" /> Payers — tap an item below to assign it
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {payers.map((p, pi) => {
+                  const color = PAYER_COLORS[pi % PAYER_COLORS.length];
+                  return (
+                    <div key={p.id} className={`flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-semibold ${color.badge}`}>
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${color.dot}`} />
+                      {editingPayer === p.id ? (
+                        <input
+                          autoFocus
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onBlur={saveEdit}
+                          onKeyDown={(e) => e.key === "Enter" && saveEdit()}
+                          className="bg-transparent outline-none w-20 text-white"
+                        />
+                      ) : (
+                        <button onClick={() => startEdit(p)} className="hover:opacity-80">
+                          {p.name}
+                        </button>
+                      )}
+                      {payers.length > 2 && (
+                        <button
+                          onClick={() => removePayer(p.id)}
+                          className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {payers.length < 6 && (
+                  <button
+                    onClick={addPayer}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-700 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" /> Add Person
+                  </button>
                 )}
               </div>
-              <p className="text-stone-300 text-sm font-semibold flex-shrink-0">
-                {formatCurrency(item.subtotal)}
+            </div>
+
+            {/* Units assignment list */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5">
+              <p className="text-stone-500 text-xs mb-2">
+                Tap a row to cycle who pays for it. Each item = one unit.
               </p>
+              {units.map((unit, idx) => {
+                const payerIdx = payers.findIndex((p) => p.id === unit.payerId);
+                const color = payerIdx >= 0 ? PAYER_COLORS[payerIdx % PAYER_COLORS.length] : null;
+                const payerName = payerIdx >= 0 ? payers[payerIdx].name : null;
+
+                return (
+                  <button
+                    key={unit.id}
+                    onClick={() => cycleUnit(unit.id)}
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                      color
+                        ? `${color.badge} border-opacity-40`
+                        : "bg-stone-800/60 border-stone-700 hover:border-stone-600"
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{unit.name}</p>
+                      {unit.mods && (
+                        <p className="text-stone-500 text-xs truncate">{unit.mods}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-stone-300 text-sm font-semibold">
+                        {formatCurrency(unit.unitPrice)}
+                      </span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full min-w-[72px] text-center ${
+                        color ? color.badge : "bg-stone-700 text-stone-400"
+                      }`}>
+                        {payerName ?? "Unassigned"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-          ))}
-        </div>
 
-        {/* Totals */}
-        <div className="p-5 border-t border-stone-800 space-y-2 flex-shrink-0">
-          <div className="flex justify-between text-stone-400 text-sm">
-            <span>Subtotal</span>
-            <span>{formatCurrency(session.subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-stone-400 text-sm">
-            <span>Tax (8.25%)</span>
-            <span>{formatCurrency(session.tax_total)}</span>
-          </div>
-          {session.orders.some((o) => o.tip_amount > 0) && (
-            <div className="flex justify-between text-stone-400 text-sm">
-              <span>Tips</span>
-              <span>{formatCurrency(session.orders.reduce((s, o) => s + o.tip_amount, 0))}</span>
+            {/* Per-payer totals + close */}
+            <div className="p-4 border-t border-stone-800 flex-shrink-0 space-y-3">
+              {unassigned > 0 && (
+                <div className="flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 rounded-xl px-3 py-2">
+                  <AlertCircle className="w-4 h-4 text-orange-400 flex-shrink-0" />
+                  <p className="text-orange-300 text-xs font-semibold">
+                    {unassigned} item{unassigned > 1 ? "s" : ""} still unassigned
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                {totals.map((t, pi) => {
+                  const color = PAYER_COLORS[pi % PAYER_COLORS.length];
+                  return (
+                    <div key={t.id} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
+                        <span className="text-stone-300 font-medium">{t.name}</span>
+                        <span className="text-stone-600 text-xs">+tax {formatCurrency(t.tax)}</span>
+                      </div>
+                      <span className="text-white font-black">{formatCurrency(t.total)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={handleConfirm}
+                disabled={loading || unassigned > 0}
+                className="w-full py-3.5 rounded-xl font-black text-base bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center gap-2"
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                {loading ? "Processing…" : "Collected — Close Table"}
+              </button>
+              <button onClick={onClose} className="w-full text-stone-500 hover:text-stone-300 text-sm transition-colors py-1">
+                Cancel
+              </button>
             </div>
-          )}
-          <div className="flex justify-between text-white font-black text-xl pt-2 border-t border-stone-700">
-            <span>Total Due</span>
-            <span className="text-emerald-400">{formatCurrency(session.grand_total)}</span>
-          </div>
-
-          {session.orders.length > 1 && (
-            <p className="text-stone-500 text-xs text-center">
-              {session.orders.length} rounds combined
-            </p>
-          )}
-
-          <button
-            onClick={handleConfirm}
-            disabled={loading}
-            className="w-full mt-2 py-3.5 rounded-xl font-black text-base bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <CheckCircle2 className="w-5 h-5" />
-            )}
-            {loading ? "Processing…" : "Mark as Paid & Close Table"}
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full text-stone-500 hover:text-stone-300 text-sm transition-colors py-1"
-          >
-            Cancel
-          </button>
-        </div>
+          </>
+        )}
       </motion.div>
     </div>
   );

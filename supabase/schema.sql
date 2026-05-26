@@ -364,6 +364,15 @@ CREATE POLICY "Admins can manage categories" ON menu_categories FOR ALL USING (
 CREATE POLICY "Admins can manage menu items" ON menu_items FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'owner'))
 );
+CREATE POLICY "Admins can manage modifier groups" ON modifier_groups FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'owner'))
+);
+CREATE POLICY "Admins can manage modifiers" ON modifiers FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'owner'))
+);
+CREATE POLICY "Admins can manage coupons" ON coupons FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'owner'))
+);
 
 -- ============================================================
 -- FUNCTIONS & TRIGGERS

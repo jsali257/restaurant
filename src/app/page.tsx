@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,64 +12,11 @@ import { TestimonialsSection } from "@/components/customer/TestimonialsSection";
 import { LocationSection } from "@/components/customer/LocationSection";
 import { Footer } from "@/components/customer/Footer";
 import { MenuCard } from "@/components/customer/MenuCard";
+import { MenuCardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { Button } from "@/components/ui/Button";
 import { MenuItem } from "@/types";
-
-// Static featured items for homepage (no DB dependency)
-const FEATURED_ITEMS: MenuItem[] = [
-  {
-    id: "item-001",
-    restaurant_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    category_id: "cat-001",
-    name: "Truffle Fries",
-    description: "Crispy hand-cut fries tossed in truffle oil, parmesan, and fresh herbs. Served with house aioli.",
-    price: 12.99,
-    image_url: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=800",
-    is_active: true, is_featured: true, is_popular: true,
-    is_vegetarian: true, is_vegan: false, is_gluten_free: false,
-    spice_level: 0, calories: 420, prep_time_minutes: 10,
-    sort_order: 0, tags: null,
-  },
-  {
-    id: "item-005",
-    restaurant_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    category_id: "cat-002",
-    name: "Margherita Classica",
-    description: "San Marzano tomato, fresh buffalo mozzarella, basil, extra virgin olive oil. The perfect classic.",
-    price: 18.99,
-    image_url: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800",
-    is_active: true, is_featured: true, is_popular: true,
-    is_vegetarian: true, is_vegan: false, is_gluten_free: false,
-    spice_level: 0, calories: 720, prep_time_minutes: 15,
-    sort_order: 0, tags: null,
-  },
-  {
-    id: "item-009",
-    restaurant_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    category_id: "cat-003",
-    name: "The Ember Burger",
-    description: "Double smash patty, aged cheddar, house special sauce, lettuce, tomato, pickles on a brioche bun.",
-    price: 16.99,
-    image_url: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800",
-    is_active: true, is_featured: true, is_popular: true,
-    is_vegetarian: false, is_vegan: false, is_gluten_free: false,
-    spice_level: 0, calories: 850, prep_time_minutes: 12,
-    sort_order: 0, tags: null,
-  },
-  {
-    id: "item-014",
-    restaurant_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    category_id: "cat-005",
-    name: "12oz Ribeye",
-    description: "Wood-fired 12oz prime ribeye, chimichurri, roasted bone marrow butter, seasonal vegetables.",
-    price: 48.99,
-    image_url: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=800",
-    is_active: true, is_featured: true, is_popular: true,
-    is_vegetarian: false, is_vegan: false, is_gluten_free: false,
-    spice_level: 0, calories: 820, prep_time_minutes: 25,
-    sort_order: 0, tags: null,
-  },
-];
+import { createClient } from "@/lib/supabase/client";
+import { RESTAURANT_ID } from "@/lib/utils";
 
 const FEATURES = [
   {
@@ -104,6 +51,24 @@ const FEATURES = [
 
 export default function HomePage() {
   const [cartOpen, setCartOpen] = useState(false);
+  const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(true);
+
+  useEffect(() => {
+    async function loadFeatured() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("menu_items")
+        .select("*, modifier_groups(*, modifiers(*))")
+        .eq("restaurant_id", RESTAURANT_ID)
+        .eq("is_featured", true)
+        .order("sort_order")
+        .limit(4);
+      setFeaturedItems((data as MenuItem[]) ?? []);
+      setLoadingItems(false);
+    }
+    loadFeatured();
+  }, []);
 
   return (
     <>
@@ -185,17 +150,20 @@ export default function HomePage() {
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {FEATURED_ITEMS.map((item, i) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-              >
-                <MenuCard item={item} />
-              </motion.div>
-            ))}
+            {loadingItems
+              ? Array.from({ length: 4 }).map((_, i) => <MenuCardSkeleton key={i} />)
+              : featuredItems.map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.08 }}
+                  >
+                    <MenuCard item={item} />
+                  </motion.div>
+                ))
+            }
           </div>
 
           <motion.div

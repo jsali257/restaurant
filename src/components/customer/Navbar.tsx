@@ -121,7 +121,7 @@ export function Navbar({ onCartOpen }: NavbarProps) {
               >
                 <ShoppingCart className="w-4 h-4" />
                 <span className="hidden sm:inline">Order Now</span>
-                {itemCount > 0 && (
+                {mounted && itemCount > 0 && (
                   <motion.span
                     key={itemCount}
                     initial={{ scale: 0 }}

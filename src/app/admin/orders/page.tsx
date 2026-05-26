@@ -46,7 +46,7 @@ export default function AdminOrdersPage() {
     const supabase = createClient();
     let query = supabase
       .from("orders")
-      .select("*, order_items(name, quantity, subtotal, special_instructions, order_item_modifiers(name))")
+      .select("*, order_items(id, name, quantity, subtotal, special_instructions, order_item_modifiers(name))")
       .eq("restaurant_id", RESTAURANT_ID)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -197,7 +197,12 @@ export default function AdminOrdersPage() {
                     >
                       {ORDER_STATUS_LABELS[order.status]}
                     </span>
-                    <span className="text-xs text-stone-400 capitalize">{order.order_type}</span>
+                    <span className="text-xs text-stone-400 capitalize">{order.order_type.replace("_", " ")}</span>
+                    {order.order_type === "dine_in" && order.table_number && (
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                        Table {order.table_number}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-stone-600 dark:text-stone-400 mt-1">
                     {order.customer_name} · {order.customer_email}

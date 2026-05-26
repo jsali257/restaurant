@@ -40,7 +40,10 @@ export function MenuCard({ item, compact = false }: MenuCardProps) {
   const unitPrice = item.price + modifierTotal;
   const hasModifiers = (item.modifier_groups?.length ?? 0) > 0;
 
+  const unavailable = !item.is_active;
+
   function handleAddToCart() {
+    if (unavailable) return;
     addItem({
       menu_item_id: item.id,
       name: item.name,
@@ -87,8 +90,12 @@ export function MenuCard({ item, compact = false }: MenuCardProps) {
   const card = (
     <motion.div
       layout
-      className="group bg-white dark:bg-stone-900 rounded-2xl overflow-hidden border border-stone-100 dark:border-stone-800 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 cursor-pointer"
-      onClick={() => hasModifiers ? setShowModal(true) : undefined}
+      className={`group bg-white dark:bg-stone-900 rounded-2xl overflow-hidden border border-stone-100 dark:border-stone-800 shadow-card transition-all duration-300 ${
+        unavailable
+          ? "opacity-60 cursor-not-allowed"
+          : "hover:shadow-card-hover hover:-translate-y-1 cursor-pointer"
+      }`}
+      onClick={() => !unavailable && hasModifiers ? setShowModal(true) : undefined}
     >
       {/* Image */}
       <div className="relative overflow-hidden">
@@ -98,7 +105,7 @@ export function MenuCard({ item, compact = false }: MenuCardProps) {
               src={item.image_url}
               alt={item.name}
               fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              className={`object-cover transition-transform duration-500 ${unavailable ? "grayscale" : "group-hover:scale-105"}`}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           ) : (
@@ -108,14 +115,23 @@ export function MenuCard({ item, compact = false }: MenuCardProps) {
           )}
         </div>
 
+        {/* Unavailable overlay */}
+        {unavailable && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+            <span className="bg-stone-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
+              Unavailable
+            </span>
+          </div>
+        )}
+
         {/* Badges overlay */}
         <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-          {item.is_featured && (
+          {!unavailable && item.is_featured && (
             <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg">
               <Star className="w-3 h-3 fill-current" /> Featured
             </span>
           )}
-          {item.is_popular && !item.is_featured && (
+          {!unavailable && item.is_popular && !item.is_featured && (
             <span className="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
               🔥 Popular
             </span>
@@ -176,7 +192,9 @@ export function MenuCard({ item, compact = false }: MenuCardProps) {
             </span>
           </div>
 
-          {hasModifiers ? (
+          {unavailable ? (
+            <span className="text-xs font-semibold text-stone-400 italic">Unavailable</span>
+          ) : hasModifiers ? (
             <Button
               size="sm"
               onClick={(e) => { e.stopPropagation(); setShowModal(true); }}

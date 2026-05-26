@@ -12,7 +12,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Bell,
+  Ban,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeOrders } from "@/hooks/useRealtime";
 import { Order, OrderStatus } from "@/types";
@@ -174,6 +176,25 @@ function KitchenOrderCard({ order, onStatusChange }: KitchenOrderCardProps) {
                   )}
                 </div>
               </div>
+              <button
+                onClick={async () => {
+                  const supabase = createClient();
+                  const { error } = await supabase
+                    .from("menu_items")
+                    .update({ is_active: false })
+                    .eq("id", item.menu_item_id);
+                  if (error) {
+                    toast.error("Failed to 86 item");
+                  } else {
+                    toast.success(`86'd: ${item.name}`);
+                  }
+                }}
+                title={`86 ${item.name} — removes it from menu`}
+                className="flex-shrink-0 flex items-center gap-1 text-xs font-black text-red-500 border border-red-200 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors"
+              >
+                <Ban className="w-3 h-3" />
+                86
+              </button>
             </div>
           </div>
         ))}

@@ -70,7 +70,7 @@ export default function MenuPage() {
   }
 
   function filterItems(items: MenuItem[]): MenuItem[] {
-    let filtered = items.filter((item) => item.is_active);
+    let filtered = [...items];
     if (search) {
       const q = search.toLowerCase();
       filtered = filtered.filter(
