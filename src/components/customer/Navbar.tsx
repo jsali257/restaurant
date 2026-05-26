@@ -13,6 +13,7 @@ import {
   Flame,
   Phone,
   Clock,
+  User,
 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { cn } from "@/lib/utils";
@@ -97,6 +98,15 @@ export function Navbar({ onCartOpen }: NavbarProps) {
                 <span className="text-xs font-medium">(512) 555-0123</span>
               </a>
 
+              {/* Account */}
+              <Link
+                href="/account"
+                className="w-9 h-9 flex items-center justify-center rounded-lg text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                aria-label="My account"
+              >
+                <User className="w-4 h-4" />
+              </Link>
+
               {/* Theme toggle */}
               {mounted && (
                 <button
@@ -165,6 +175,14 @@ export function Navbar({ onCartOpen }: NavbarProps) {
                   {link.label}
                 </Link>
               ))}
+              <Link
+                href="/account"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-stone-700 dark:text-stone-300 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-xl transition-colors"
+              >
+                <User className="w-4 h-4" />
+                My Orders
+              </Link>
               <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center gap-3 px-4 py-2">
                 <Clock className="w-4 h-4 text-orange-500" />
                 <span className="text-xs text-stone-500">Today: 11:00 AM – 10:00 PM</span>

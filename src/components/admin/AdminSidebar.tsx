@@ -14,24 +14,61 @@ import {
   ChefHat,
   ExternalLink,
   QrCode,
+  Users,
+  FileText,
+  ShieldCheck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/admin/orders", icon: ShoppingBag, label: "Orders" },
-  { href: "/admin/menu", icon: UtensilsCrossed, label: "Menu" },
-  { href: "/admin/tables", icon: QrCode, label: "Tables & QR" },
-  { href: "/admin/coupons", icon: Tag, label: "Coupons" },
-  { href: "/admin/analytics", icon: BarChart3, label: "Analytics" },
-  { href: "/admin/settings", icon: Settings, label: "Settings" },
+  { href: "/admin",           icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/admin/orders",    icon: ShoppingBag,     label: "Orders" },
+  { href: "/admin/menu",      icon: UtensilsCrossed, label: "Menu" },
+  { href: "/admin/tables",    icon: QrCode,          label: "Tables & QR" },
+  { href: "/admin/coupons",   icon: Tag,             label: "Coupons" },
+  { href: "/admin/analytics", icon: BarChart3,       label: "Analytics" },
+  { href: "/admin/reports",   icon: FileText,        label: "Reports" },
+  { href: "/admin/staff",     icon: Users,           label: "Staff" },
+  { href: "/admin/settings",  icon: Settings,        label: "Settings" },
 ];
+
+const ROLE_LABELS: Record<string, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  staff: "Server",
+  kitchen: "Kitchen",
+  customer: "Customer",
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  owner:   "bg-purple-500/20 text-purple-400",
+  admin:   "bg-orange-500/20 text-orange-400",
+  staff:   "bg-blue-500/20 text-blue-400",
+  kitchen: "bg-amber-500/20 text-amber-400",
+};
 
 export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [profile, setProfile] = useState<{ email: string; full_name: string | null; role: string } | null>(null);
+
+  useEffect(() => {
+    async function loadProfile() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("email, full_name, role")
+        .eq("id", user.id)
+        .single();
+      if (data) setProfile(data);
+    }
+    loadProfile();
+  }, []);
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -112,6 +149,24 @@ export function AdminSidebar() {
           <LogOut className="w-4 h-4" />
           Sign Out
         </button>
+
+        {/* Current user */}
+        {profile && (
+          <div className="mt-2 px-3 py-3 rounded-xl bg-stone-900 border border-stone-800">
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-stone-500 flex-shrink-0" />
+              <p className="text-white text-xs font-semibold truncate">
+                {profile.full_name || profile.email}
+              </p>
+            </div>
+            <span className={cn(
+              "inline-block text-xs font-semibold px-2 py-0.5 rounded-full",
+              ROLE_COLORS[profile.role] ?? "bg-stone-700 text-stone-400"
+            )}>
+              {ROLE_LABELS[profile.role] ?? profile.role}
+            </span>
+          </div>
+        )}
       </div>
     </aside>
   );
