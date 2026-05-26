@@ -23,16 +23,21 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    const normalizedEmail = email.toLowerCase().trim();
 
     // Check auth.users directly — catches users who signed up but have no/mismatched profile row
-    const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-    const existingAuthUser = users.find((u) => u.email === email);
+    const { data: listData, error: listError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+    console.log("[staff invite] listUsers error:", listError);
+    console.log("[staff invite] total users found:", listData?.users?.length);
+
+    const existingAuthUser = listData?.users?.find((u) => u.email?.toLowerCase() === normalizedEmail);
+    console.log("[staff invite] existingAuthUser:", existingAuthUser?.id ?? "none");
 
     if (existingAuthUser) {
       // Already registered — just upsert the profile with the new role
       await supabase.from("profiles").upsert({
         id: existingAuthUser.id,
-        email,
+        email: normalizedEmail,
         full_name: full_name || existingAuthUser.user_metadata?.full_name || null,
         role,
       }, { onConflict: "id" });
@@ -40,10 +45,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Truly new user — send invite email
+    console.log("[staff invite] sending invite to:", normalizedEmail);
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const { data: authData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
-      email,
-      { data: { full_name: full_name || "" } }
+      normalizedEmail,
+      {
+        data: { full_name: full_name || "" },
+        redirectTo: `${siteUrl}/auth/callback?next=/admin`,
+      }
     );
+    console.log("[staff invite] inviteError:", inviteError);
+    console.log("[staff invite] authData user:", authData?.user?.id ?? "none");
 
     if (inviteError) {
       return NextResponse.json({ error: inviteError.message }, { status: 400 });
@@ -53,14 +65,15 @@ export async function POST(req: NextRequest) {
     if (authData.user) {
       await supabase.from("profiles").upsert({
         id: authData.user.id,
-        email,
+        email: normalizedEmail,
         full_name: full_name || null,
         role,
       }, { onConflict: "id" });
     }
 
     return NextResponse.json({ success: true, existing: false });
-  } catch {
+  } catch (err) {
+    console.log("[staff invite] caught exception:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

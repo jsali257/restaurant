@@ -383,7 +383,8 @@ CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO profiles (id, email, full_name)
-  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name');
+  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name')
+  ON CONFLICT (email) DO UPDATE SET id = EXCLUDED.id;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
