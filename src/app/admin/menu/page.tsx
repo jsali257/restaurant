@@ -16,6 +16,9 @@ import {
   ChevronDown,
   ChevronRight,
   Settings2,
+  ChevronUp,
+  FolderOpen,
+  Check,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { MenuItem, MenuCategory } from "@/types";
@@ -90,6 +93,13 @@ export default function AdminMenuPage() {
   const [activeTab, setActiveTab] = useState<"details" | "modifiers">("details");
   const [groups, setGroups] = useState<ModifierGroup[]>([]);
   const [expandedGroup, setExpandedGroup] = useState<number | null>(null);
+
+  // Category management
+  const [showCatModal, setShowCatModal] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [savingCat, setSavingCat] = useState(false);
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCatName, setEditingCatName] = useState("");
 
   async function load() {
     const supabase = createClient();
@@ -271,6 +281,55 @@ export default function AdminMenuPage() {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
   }
 
+  async function handleAddCategory() {
+    if (!newCatName.trim()) return;
+    setSavingCat(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("menu_categories").insert({
+      restaurant_id: RESTAURANT_ID,
+      name: newCatName.trim(),
+      sort_order: categories.length,
+      is_active: true,
+    });
+    if (error) { toast.error("Failed to add category"); }
+    else { toast.success("Category added!"); setNewCatName(""); await load(); }
+    setSavingCat(false);
+  }
+
+  async function handleRenameCategory(id: string) {
+    if (!editingCatName.trim()) return;
+    const supabase = createClient();
+    await supabase.from("menu_categories").update({ name: editingCatName.trim() }).eq("id", id);
+    setCategories((prev) => prev.map((c) => c.id === id ? { ...c, name: editingCatName.trim() } : c));
+    setEditingCatId(null);
+    toast.success("Category renamed");
+  }
+
+  async function handleReorderCategory(id: string, dir: "up" | "down") {
+    const idx = categories.findIndex((c) => c.id === id);
+    if (dir === "up" && idx === 0) return;
+    if (dir === "down" && idx === categories.length - 1) return;
+    const next = [...categories];
+    const swapIdx = dir === "up" ? idx - 1 : idx + 1;
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    setCategories(next);
+    const supabase = createClient();
+    await Promise.all(next.map((c, i) => supabase.from("menu_categories").update({ sort_order: i }).eq("id", c.id)));
+  }
+
+  async function handleDeleteCategory(id: string) {
+    const count = items.filter((i) => i.category_id === id).length;
+    if (count > 0) {
+      toast.error(`Move or delete the ${count} item${count > 1 ? "s" : ""} in this category first`);
+      return;
+    }
+    if (!confirm("Delete this category?")) return;
+    const supabase = createClient();
+    await supabase.from("menu_categories").delete().eq("id", id);
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    toast.success("Category deleted");
+  }
+
   const filtered = activeCategory === "all" ? items : items.filter((i) => i.category_id === activeCategory);
   const visibleGroups = groups.filter((g) => !g._deleted);
 
@@ -281,9 +340,14 @@ export default function AdminMenuPage() {
           <h1 className="text-2xl font-black text-stone-900 dark:text-white">Menu Management</h1>
           <p className="text-stone-400 text-sm mt-1">{items.length} items across {categories.length} categories</p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="w-4 h-4" /> Add Item
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setShowCatModal(true)} className="gap-2">
+            <FolderOpen className="w-4 h-4" /> Categories
+          </Button>
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="w-4 h-4" /> Add Item
+          </Button>
+        </div>
       </div>
 
       {/* Category filter */}
@@ -387,6 +451,115 @@ export default function AdminMenuPage() {
           </table>
         )}
       </div>
+
+      {/* Category management modal */}
+      <AnimatePresence>
+        {showCatModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowCatModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-stone-900 rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-800 flex-shrink-0">
+                <h2 className="font-bold text-lg text-stone-900 dark:text-white">Manage Categories</h2>
+                <button onClick={() => setShowCatModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {categories.map((cat, idx) => {
+                  const count = items.filter((i) => i.category_id === cat.id).length;
+                  const isEditing = editingCatId === cat.id;
+                  return (
+                    <div key={cat.id} className="flex items-center gap-2 bg-stone-50 dark:bg-stone-800 rounded-xl px-3 py-2.5">
+                      {/* Reorder */}
+                      <div className="flex flex-col gap-0.5 flex-shrink-0">
+                        <button
+                          onClick={() => handleReorderCategory(cat.id, "up")}
+                          disabled={idx === 0}
+                          className="w-5 h-5 flex items-center justify-center text-stone-400 hover:text-stone-700 disabled:opacity-20 transition-colors"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleReorderCategory(cat.id, "down")}
+                          disabled={idx === categories.length - 1}
+                          className="w-5 h-5 flex items-center justify-center text-stone-400 hover:text-stone-700 disabled:opacity-20 transition-colors"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Name (editable) */}
+                      <div className="flex-1 min-w-0">
+                        {isEditing ? (
+                          <input
+                            autoFocus
+                            value={editingCatName}
+                            onChange={(e) => setEditingCatName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleRenameCategory(cat.id); if (e.key === "Escape") setEditingCatId(null); }}
+                            className="w-full bg-white dark:bg-stone-700 border border-orange-400 rounded-lg px-2 py-1 text-sm font-medium focus:outline-none"
+                          />
+                        ) : (
+                          <button
+                            onClick={() => { setEditingCatId(cat.id); setEditingCatName(cat.name); }}
+                            className="text-sm font-semibold text-stone-800 dark:text-white hover:text-orange-600 transition-colors text-left w-full truncate"
+                          >
+                            {cat.name}
+                          </button>
+                        )}
+                        <p className="text-xs text-stone-400 mt-0.5">{count} item{count !== 1 ? "s" : ""}</p>
+                      </div>
+
+                      {/* Actions */}
+                      {isEditing ? (
+                        <button
+                          onClick={() => handleRenameCategory(cat.id)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-white bg-orange-500 hover:bg-orange-600 transition-colors flex-shrink-0"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add new category */}
+              <div className="px-4 py-4 border-t border-stone-100 dark:border-stone-800 flex-shrink-0 flex gap-2">
+                <input
+                  type="text"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
+                  placeholder="New category name…"
+                  className="input-base flex-1 text-sm"
+                />
+                <Button onClick={handleAddCategory} loading={savingCat} className="gap-1.5 flex-shrink-0">
+                  <Plus className="w-4 h-4" /> Add
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Form modal */}
       <AnimatePresence>

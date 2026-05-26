@@ -1,24 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   DollarSign,
   ShoppingBag,
   TrendingUp,
-  Users,
   Clock,
   ArrowUp,
   ArrowDown,
   RefreshCw,
-  CheckCircle2,
-  XCircle,
   Flame,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Order } from "@/types";
 import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, RESTAURANT_ID } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
+import { useRealtimeOrders } from "@/hooks/useRealtime";
 
 interface Stats {
   todayRevenue: number;
@@ -80,9 +78,8 @@ export default function AdminDashboard() {
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      const supabase = createClient();
+  const load = useCallback(async () => {
+    const supabase = createClient();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const yesterday = new Date(today);
@@ -162,9 +159,15 @@ export default function AdminDashboard() {
       });
       setRecentOrders((recentRes.data as Order[]) ?? []);
       setLoading(false);
-    }
-    load();
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useRealtimeOrders(RESTAURANT_ID, () => {
+    load();
+  });
 
   if (loading) {
     return (
@@ -177,14 +180,20 @@ export default function AdminDashboard() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-1">
-          <Flame className="w-5 h-5 text-orange-500" />
-          <h1 className="text-2xl font-black text-stone-900 dark:text-white">Dashboard</h1>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Flame className="w-5 h-5 text-orange-500" />
+            <h1 className="text-2xl font-black text-stone-900 dark:text-white">Dashboard</h1>
+          </div>
+          <p className="text-stone-500 dark:text-stone-400 text-sm">
+            Welcome back! Here&apos;s what&apos;s happening at Ember & Oak.
+          </p>
         </div>
-        <p className="text-stone-500 dark:text-stone-400 text-sm">
-          Welcome back! Here&apos;s what&apos;s happening at Ember & Oak.
-        </p>
+        <div className="flex items-center gap-1.5 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-full px-3 py-1.5">
+          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <span className="text-xs font-semibold text-green-700 dark:text-green-400">Live</span>
+        </div>
       </div>
 
       {/* Stats grid */}

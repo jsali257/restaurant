@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { restaurant_id, table_number } = await req.json();
+    const { restaurant_id, table_number, payment_method } = await req.json();
 
     if (!restaurant_id || !table_number) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -35,13 +35,16 @@ export async function POST(req: NextRequest) {
     );
 
     // Mark all orders as paid and completed
+    const updatePayload: Record<string, unknown> = {
+      payment_status: "paid",
+      status: "delivered",
+      completed_at: new Date().toISOString(),
+    };
+    if (payment_method) updatePayload.payment_method = payment_method;
+
     const { error: updateError } = await supabase
       .from("orders")
-      .update({
-        payment_status: "paid",
-        status: "delivered",
-        completed_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .in("id", orderIds);
 
     if (updateError) {

@@ -51,7 +51,6 @@ function ModifierModal({ item, onConfirm, onClose }: ModifierModalProps) {
     setSelected((prev) => {
       const next = { ...prev };
       if (group.max_selections === 1) {
-        // radio — deselect any other in this group first
         (group.modifiers ?? []).forEach((m) => delete next[m.id]);
         if (!prev[modifier.id]) next[modifier.id] = modifier;
       } else {
@@ -82,27 +81,27 @@ function ModifierModal({ item, onConfirm, onClose }: ModifierModalProps) {
   const unitPrice = item.price + extraCost;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
-        className="bg-stone-900 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden"
+        className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden border border-gray-200 shadow-2xl"
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b border-stone-800 flex-shrink-0">
+        <div className="flex items-start justify-between p-5 border-b border-gray-100 flex-shrink-0">
           <div>
-            <h3 className="font-bold text-white text-lg leading-tight">{item.name}</h3>
-            <p className="text-stone-400 text-sm mt-0.5">
+            <h3 className="font-bold text-gray-900 text-lg leading-tight">{item.name}</h3>
+            <p className="text-gray-500 text-sm mt-0.5">
               {formatCurrency(unitPrice)} each
               {extraCost > 0 && (
-                <span className="text-orange-400"> · +{formatCurrency(extraCost)} in add-ons</span>
+                <span className="text-orange-600"> · +{formatCurrency(extraCost)} in add-ons</span>
               )}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400 hover:text-white transition-colors flex-shrink-0 ml-3"
+            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0 ml-3"
           >
             <X className="w-4 h-4" />
           </button>
@@ -112,22 +111,22 @@ function ModifierModal({ item, onConfirm, onClose }: ModifierModalProps) {
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {/* Quantity */}
           <div>
-            <p className="font-semibold text-white text-sm mb-3">Quantity</p>
+            <p className="font-semibold text-gray-800 text-sm mb-3">Quantity</p>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
-                className="w-10 h-10 bg-stone-800 hover:bg-stone-700 rounded-xl flex items-center justify-center text-stone-300 transition-colors"
+                className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center text-gray-600 transition-colors"
               >
                 <Minus className="w-4 h-4" />
               </button>
-              <span className="text-white font-black text-2xl w-8 text-center">{qty}</span>
+              <span className="text-gray-900 font-black text-2xl w-8 text-center">{qty}</span>
               <button
                 onClick={() => setQty((q) => q + 1)}
-                className="w-10 h-10 bg-stone-800 hover:bg-stone-700 rounded-xl flex items-center justify-center text-stone-300 transition-colors"
+                className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center text-gray-600 transition-colors"
               >
                 <Plus className="w-4 h-4" />
               </button>
-              <span className="text-stone-500 text-sm ml-2">
+              <span className="text-gray-400 text-sm ml-2">
                 = {formatCurrency(unitPrice * qty)}
               </span>
             </div>
@@ -137,13 +136,13 @@ function ModifierModal({ item, onConfirm, onClose }: ModifierModalProps) {
           {groups.map((group) => (
             <div key={group.id}>
               <div className="flex items-center gap-2 mb-3">
-                <p className="font-semibold text-white text-sm">{group.name}</p>
+                <p className="font-semibold text-gray-800 text-sm">{group.name}</p>
                 {group.is_required ? (
-                  <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full font-semibold">
+                  <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold">
                     Required
                   </span>
                 ) : (
-                  <span className="text-xs text-stone-500">Optional</span>
+                  <span className="text-xs text-gray-400">Optional</span>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -153,13 +152,13 @@ function ModifierModal({ item, onConfirm, onClose }: ModifierModalProps) {
                     onClick={() => toggle(group, modifier)}
                     className={`flex items-start justify-between px-3 py-2.5 rounded-xl border text-sm transition-all text-left ${
                       selected[modifier.id]
-                        ? "border-orange-500 bg-orange-500/20 text-orange-300"
-                        : "border-stone-700 bg-stone-800 text-stone-300 hover:border-stone-600"
+                        ? "border-orange-500 bg-orange-50 text-orange-700"
+                        : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
                     }`}
                   >
                     <span className="leading-tight">{modifier.name}</span>
                     {modifier.price_delta !== 0 && (
-                      <span className="text-xs text-stone-400 ml-2 flex-shrink-0">
+                      <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
                         +{formatCurrency(modifier.price_delta)}
                       </span>
                     )}
@@ -169,12 +168,12 @@ function ModifierModal({ item, onConfirm, onClose }: ModifierModalProps) {
             </div>
           ))}
 
-          {/* Special instructions — always shown */}
+          {/* Special instructions */}
           <div>
-            <p className="font-semibold text-white text-sm mb-2">
+            <p className="font-semibold text-gray-800 text-sm mb-2">
               Special Instructions
               {!hasModifiers && (
-                <span className="text-stone-500 font-normal ml-2 text-xs">(no onions, extra sauce, allergy…)</span>
+                <span className="text-gray-400 font-normal ml-2 text-xs">(no onions, extra sauce, allergy…)</span>
               )}
             </p>
             <textarea
@@ -187,15 +186,15 @@ function ModifierModal({ item, onConfirm, onClose }: ModifierModalProps) {
               }
               rows={hasModifiers ? 2 : 3}
               autoFocus={!hasModifiers}
-              className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-stone-200 text-sm placeholder-stone-500 focus:outline-none focus:border-orange-500 resize-none transition-colors"
+              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 resize-none transition-colors"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-stone-800 flex-shrink-0 space-y-2">
+        <div className="p-5 border-t border-gray-100 flex-shrink-0 space-y-2">
           {groups.some((g) => g.is_required && !(g.modifiers ?? []).some((m) => selected[m.id])) && (
-            <p className="text-orange-400 text-xs text-center">
+            <p className="text-orange-500 text-xs text-center">
               Please select required options above
             </p>
           )}
@@ -367,7 +366,7 @@ export default function StaffPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 flex flex-col">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       <Suspense fallback={null}>
         <TableParamReader
           onTable={(t) => {
@@ -376,14 +375,15 @@ export default function StaffPage() {
           }}
         />
       </Suspense>
+
       {/* Header */}
-      <div className="bg-stone-900 border-b border-stone-800 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 flex-shrink-0 shadow-sm">
         <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
           <ChefHat className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="font-black text-white text-base">Staff Order Entry</h1>
-          <p className="text-stone-500 text-xs">Ember & Oak</p>
+          <h1 className="font-black text-gray-900 text-base">Staff Order Entry</h1>
+          <p className="text-gray-400 text-xs">Ember & Oak</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {activeTable && (
@@ -393,7 +393,7 @@ export default function StaffPage() {
           )}
           <Link
             href="/staff/tables"
-            className="flex items-center gap-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+            className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
           >
             <LayoutGrid className="w-4 h-4" />
             Tables
@@ -403,10 +403,10 @@ export default function StaffPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Table selector + Cart */}
-        <div className="w-72 xl:w-80 bg-stone-900 border-r border-stone-800 flex flex-col overflow-hidden flex-shrink-0">
+        <div className="w-72 xl:w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
           {/* Table picker */}
-          <div className="p-4 border-b border-stone-800">
-            <p className="text-stone-400 text-xs font-semibold uppercase tracking-wider mb-3">
+          <div className="p-4 border-b border-gray-100">
+            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-3">
               Select Table
             </p>
             <div className="grid grid-cols-5 gap-1.5 mb-3">
@@ -417,7 +417,7 @@ export default function StaffPage() {
                   className={`py-2 rounded-lg text-sm font-bold transition-colors ${
                     tableNumber === t
                       ? "bg-orange-500 text-white"
-                      : "bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
                   }`}
                 >
                   {t}
@@ -429,18 +429,18 @@ export default function StaffPage() {
               value={customTable}
               onChange={(e) => { setCustomTable(e.target.value); setTableNumber(""); }}
               placeholder="Custom table #"
-              className="w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-stone-200 text-sm placeholder-stone-500 focus:outline-none focus:border-orange-500"
+              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500"
             />
           </div>
 
           {/* Cart */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            <p className="text-stone-400 text-xs font-semibold uppercase tracking-wider">
+            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">
               Order ({cart.length > 0 ? cart.reduce((s, c) => s + c.quantity, 0) : 0} items)
             </p>
             <AnimatePresence>
               {cart.length === 0 ? (
-                <div className="text-center py-8 text-stone-600 text-sm">
+                <div className="text-center py-8 text-gray-400 text-sm">
                   <UtensilsCrossed className="w-8 h-8 mx-auto mb-2 opacity-40" />
                   No items yet
                 </div>
@@ -451,41 +451,41 @@ export default function StaffPage() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
-                    className="bg-stone-800 rounded-xl p-3"
+                    className="bg-gray-50 border border-gray-200 rounded-xl p-3"
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-semibold truncate">{item.name}</p>
+                        <p className="text-gray-900 text-sm font-semibold truncate">{item.name}</p>
                         {item.modifiers.length > 0 && (
-                          <p className="text-stone-400 text-xs truncate">
+                          <p className="text-gray-500 text-xs truncate">
                             {item.modifiers.map((m) => m.name).join(", ")}
                           </p>
                         )}
                         {item.special_instructions && (
-                          <p className="text-orange-400 text-xs truncate">⚠️ {item.special_instructions}</p>
+                          <p className="text-orange-600 text-xs truncate">⚠️ {item.special_instructions}</p>
                         )}
                       </div>
-                      <p className="text-orange-400 text-sm font-bold flex-shrink-0">
+                      <p className="text-orange-600 text-sm font-bold flex-shrink-0">
                         {formatCurrency(item.item_total)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => updateQty(item.id, -1)}
-                        className="w-7 h-7 bg-stone-700 hover:bg-stone-600 rounded-lg flex items-center justify-center text-stone-300 transition-colors"
+                        className="w-7 h-7 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center text-gray-600 transition-colors"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="text-white font-bold text-sm w-6 text-center">{item.quantity}</span>
+                      <span className="text-gray-900 font-bold text-sm w-6 text-center">{item.quantity}</span>
                       <button
                         onClick={() => updateQty(item.id, 1)}
-                        className="w-7 h-7 bg-stone-700 hover:bg-stone-600 rounded-lg flex items-center justify-center text-stone-300 transition-colors"
+                        className="w-7 h-7 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center text-gray-600 transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setCart((prev) => prev.filter((c) => c.id !== item.id))}
-                        className="ml-auto w-7 h-7 bg-red-900/40 hover:bg-red-900/60 rounded-lg flex items-center justify-center text-red-400 transition-colors"
+                        className="ml-auto w-7 h-7 bg-red-50 hover:bg-red-100 rounded-lg flex items-center justify-center text-red-500 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -497,17 +497,17 @@ export default function StaffPage() {
           </div>
 
           {/* Totals + submit */}
-          <div className="p-4 border-t border-stone-800 space-y-3">
+          <div className="p-4 border-t border-gray-100 space-y-3">
             {cart.length > 0 && (
               <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between text-stone-400">
+                <div className="flex justify-between text-gray-500">
                   <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-stone-400">
+                <div className="flex justify-between text-gray-500">
                   <span>Tax (8.25%)</span><span>{formatCurrency(tax)}</span>
                 </div>
-                <div className="flex justify-between text-white font-bold border-t border-stone-700 pt-1.5">
-                  <span>Total</span><span className="text-orange-400">{formatCurrency(total)}</span>
+                <div className="flex justify-between text-gray-900 font-bold border-t border-gray-200 pt-1.5">
+                  <span>Total</span><span className="text-orange-600">{formatCurrency(total)}</span>
                 </div>
               </div>
             )}
@@ -518,7 +518,7 @@ export default function StaffPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="flex items-center gap-2 bg-green-900/40 border border-green-700 rounded-xl px-3 py-2 text-green-400 text-sm font-semibold"
+                  className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-green-700 text-sm font-semibold"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Sent! #{submitted?.split("-").pop()}
@@ -546,13 +546,13 @@ export default function StaffPage() {
         {/* Right: Menu */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Category tabs */}
-          <div className="bg-stone-900 border-b border-stone-800 px-4 py-3 flex gap-2 overflow-x-auto scrollbar-hide flex-shrink-0">
+          <div className="bg-white border-b border-gray-200 px-4 py-3 flex gap-2 overflow-x-auto scrollbar-hide flex-shrink-0">
             <button
               onClick={() => setActiveCategory("all")}
               className={`flex-shrink-0 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                 activeCategory === "all"
                   ? "bg-orange-500 text-white"
-                  : "bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-700"
+                  : "bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200"
               }`}
             >
               All Items
@@ -564,7 +564,7 @@ export default function StaffPage() {
                 className={`flex-shrink-0 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                   activeCategory === cat.id
                     ? "bg-orange-500 text-white"
-                    : "bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-700"
+                    : "bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200"
                 }`}
               >
                 {cat.name}
@@ -577,7 +577,7 @@ export default function StaffPage() {
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {Array.from({ length: 12 }).map((_, i) => (
-                  <div key={i} className="bg-stone-800 rounded-xl h-28 animate-pulse" />
+                  <div key={i} className="bg-white rounded-xl h-28 animate-pulse border border-gray-200" />
                 ))}
               </div>
             ) : (
@@ -586,25 +586,25 @@ export default function StaffPage() {
                   <button
                     key={item.id}
                     onClick={() => openItem(item)}
-                    className="bg-stone-800 hover:bg-stone-700 border border-stone-700 hover:border-orange-500/50 rounded-xl p-4 text-left transition-all active:scale-95 group"
+                    className="bg-white hover:bg-orange-50 border border-gray-200 hover:border-orange-400 rounded-xl p-4 text-left transition-all active:scale-95 group shadow-sm"
                   >
-                    <p className="font-bold text-white text-sm mb-1 leading-tight group-hover:text-orange-300 transition-colors">
+                    <p className="font-bold text-gray-900 text-sm mb-1 leading-tight group-hover:text-orange-600 transition-colors">
                       {item.name}
                     </p>
                     {item.description && (
-                      <p className="text-stone-500 text-xs mb-2 line-clamp-2 leading-relaxed">
+                      <p className="text-gray-400 text-xs mb-2 line-clamp-2 leading-relaxed">
                         {item.description}
                       </p>
                     )}
                     <div className="flex items-center justify-between">
-                      <p className="text-orange-400 font-bold text-sm">
+                      <p className="text-orange-600 font-bold text-sm">
                         {formatCurrency(item.price)}
                       </p>
                       <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <Plus className="w-3.5 h-3.5 text-white" />
                       </div>
                     </div>
-                    <p className="text-stone-600 text-xs mt-1">
+                    <p className="text-gray-400 text-xs mt-1">
                       {(item.modifier_groups ?? []).length > 0
                         ? "Tap to customize + notes"
                         : "Tap to add notes"}
